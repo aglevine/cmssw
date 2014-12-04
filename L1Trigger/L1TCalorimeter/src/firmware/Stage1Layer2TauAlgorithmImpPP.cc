@@ -64,7 +64,7 @@ void l1t::Stage1Layer2TauAlgorithmImpPP::processEvent(const std::vector<l1t::Cal
 
   std::vector<l1t::Tau> *preGtTaus = new std::vector<l1t::Tau>();
 
-
+  //std::cout << "starting regions loop" << std::endl;
   for(CaloRegionBxCollection::const_iterator region = subRegions->begin();
       region != subRegions->end(); region++) {
 
@@ -93,30 +93,78 @@ void l1t::Stage1Layer2TauAlgorithmImpPP::processEvent(const std::vector<l1t::Cal
     for(CaloRegionBxCollection::const_iterator neighbor = subRegions->begin();
 	neighbor != subRegions->end(); neighbor++) {
 
+      
+      int highestSubNeighborEt=0;
+      int highestSubNeighborEta=999;
+      int highestSubNeighborPhi=999;
+      int highestSubNeighborTauVeto=999;
+
       int neighborPhi = neighbor->hwPhi();
       int neighborEta = neighbor->hwEta();
       int deltaPhi = regionPhi - neighborPhi;
       if (std::abs(deltaPhi) == L1CaloRegionDetId::N_PHI-1)
-	deltaPhi = -deltaPhi/std::abs(deltaPhi); //18 regions in phi
+	      deltaPhi = -deltaPhi/std::abs(deltaPhi); //18 regions in phi
 
       deltaPhi = std::abs(deltaPhi);
       int deltaEta = std::abs(regionEta - neighborEta);
-
+      	
       if (deltaPhi + deltaEta > 0 && deltaPhi + deltaEta < 2) {  //nondiagonal neighbors
-	if (neighbor->hwPt() > highestNeighborEt) {
-	  highestNeighborEt = neighbor->hwPt();
-	  highestNeighborEta = neighbor->hwEta();
-	  highestNeighborPhi = neighbor->hwPhi();
-	  int neighborTauVeto = neighbor->hwQual() & 0x1; // tauVeto should be the first bit of quality integer
-	  highestNeighborTauVeto = neighborTauVeto;
-	}
+        std::cout<<"neighbor et, highest neighbor et  " << neighbor->hwPt() << " , " << highestNeighborEt<<std::endl;
+	if (neighbor->hwPt() > highestNeighborEt || (highestNeighborPhi == 999)) {
+          std::cout << "neighbor has highest et yet, looping through subneighbors" << std::endl;
+// find neighbor of neighbor with highest Et
+          for(CaloRegionBxCollection::const_iterator subneighbor = subRegions->begin();
+              subneighbor != subRegions->end(); subneighbor++) {
+  
+            int subneighborPhi = subneighbor->hwPhi();
+            int subneighborEta = subneighbor->hwEta();
+            int subdeltaPhi = neighborPhi - subneighborPhi;
+            if (std::abs(subdeltaPhi) == L1CaloRegionDetId::N_PHI-1)
+              subdeltaPhi = -subdeltaPhi/std::abs(subdeltaPhi); //18 regions in phi
+     
+            subdeltaPhi = std::abs(subdeltaPhi);
+            int subdeltaEta = std::abs(neighborEta - subneighborEta);
+     
+            if (subdeltaPhi + subdeltaEta > 0 && subdeltaPhi + subdeltaEta < 2) {  //nondiagonal subneighbors
+            std::cout<<"subneighbor et, highest subneighbor et  " << subneighbor->hwPt() << " , " << highestSubNeighborEt<<std::endl;
+              if (subneighbor->hwPt() > highestSubNeighborEt || highestSubNeighborPhi == 999){
+                std::cout << "sub neighbor has highest et yet" << std::endl;
+                highestSubNeighborEt = subneighbor->hwPt();
+                highestSubNeighborEta = subneighbor->hwEta();
+                highestSubNeighborPhi = subneighbor->hwPhi();
+                int subneighborTauVeto = subneighbor->hwQual() & 0x1; // tauVeto should be the first bit of quality integer
+                highestSubNeighborTauVeto = subneighborTauVeto;
+              }
+            }
+          }
+          // check to make sure we aren't double counting energy before declaring a highest neighbor
+          string NESWNeighbor = findNESW(neighborEta, neighborPhi, highestSubNeighborEta, highestSubNeighborPhi); //NESW between neighbor and subneighbor
+          string NESWSubNeighbor = findNESW(regionEta, regionPhi, highestSubNeighborEta, highestSubNeighborPhi); //NESW between central and subneighbor (overlap check)
+          string NESWCandidate = findNESW(regionEta, regionPhi, neighborEta, neighborPhi); //NESW between central and neighbor
+          std::cout<<"tau et, subneighbor et, NESWNeighbor, NESWSubNeighbor, NESWCandidate" << tauEt << " , " << highestSubNeighborEt << " , " << NESWNeighbor << " , " << NESWSubNeighbor  << ", " << NESWCandidate << std::endl;
+          if(NESWNeighbor == "isNorth" || NESWNeighbor == "isSouth" || NESWNeighbor == "isEast" || NESWNeighbor == "isWest"){
+            std::cout<<"highest subneighbor is non diagonal to highest neighbor" << std::endl;
+            if(NESWSubNeighbor == "isOverlap" || (tauEt > highestSubNeighborEt && (NESWCandidate=="isEast" || NESWCandidate=="isNorth"))
+              || (tauEt >= highestSubNeighborEt && (NESWCandidate=="isSouth" || NESWCandidate=="isWest"))){ //check if central is highest neighbor of neighbor before storing highest neighbor info
+              std::cout << "adding highest neighbor info" << std::endl; 
+   
+    	      highestNeighborEt = neighbor->hwPt();
+	      highestNeighborEta = neighbor->hwEta();
+	      highestNeighborPhi = neighbor->hwPhi();
+	      int neighborTauVeto = neighbor->hwQual() & 0x1; // tauVeto should be the first bit of quality integer
+	      highestNeighborTauVeto = neighborTauVeto;
+	    }
+            if (highestSubNeighborEt > tauEt){
+              std::cout << "should skip recording neighbor as highest neighbor" << std::endl;  
+	    }
+          }
+        }
       }
+
     }
-
-
     string NESW = findNESW(regionEta, regionPhi, highestNeighborEta, highestNeighborPhi);
 
-    //std::cout << "tau et, neighbor et " << tauEt << " " << highestNeighborEt << std::endl;
+    std::cout << "tau et, neighbor et " << tauEt << " " << highestNeighborEt << std::endl;
     if((tauEt > highestNeighborEt && (NESW=="isEast" || NESW=="isNorth"))
        || (tauEt >= highestNeighborEt && (NESW=="isSouth" || NESW=="isWest"))
        || highestNeighborEt == 0 ) {
@@ -126,19 +174,25 @@ void l1t::Stage1Layer2TauAlgorithmImpPP::processEvent(const std::vector<l1t::Cal
       int regionTauVeto = region->hwQual() & 0x1;  // tauVeto should be the first bit of quality integer
       //std::cout<< "regiontauveto, neighbor " << regionTauVeto << " " << highestNeighborTauVeto << std::endl;
 
-	double jetIsolation = JetIsolation(tauEt, region->hwEta(), region->hwPhi(), *unCorrJets);
+      double jetIsolation = JetIsolation(tauEt, region->hwEta(), region->hwPhi(), *unCorrJets);
+      if ((highestNeighborTauVeto == 0 && regionTauVeto == 0) || tauEt > switchOffTauVeto) {
+	if (jetIsolation < tauRelativeJetIsolationCut || (tauEt >= switchOffTauIso && jetIsolation < tauRelativeJetIsolationLimit)
+	    || (std::abs(jetIsolation - 999.) < 0.1) ) isoFlag=1;
+      
+      //if (highestSubNeighborEt > tauEt){
+          //std::cout << "!!!!!" << std::endl;
+        //std::cout << "tau et, neighbor et, subneighbor et " << tauEt << " " << highestNeighborEt << " " << highestSubNeighborEt<< std::endl;
+            //}
+        ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<double> > tauLorentz(0,0,0,0);
 
-	if ((highestNeighborTauVeto == 0 && regionTauVeto == 0) || tauEt > switchOffTauVeto) {
-	  if (jetIsolation < tauRelativeJetIsolationCut || (tauEt >= switchOffTauIso && jetIsolation < tauRelativeJetIsolationLimit)
-	      || (std::abs(jetIsolation - 999.) < 0.1) ) isoFlag=1;
-	}
-	ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<double> > tauLorentz(0,0,0,0);
+        l1t::Tau theTau(*&tauLorentz, tauEt, region->hwEta(), region->hwPhi(), quality, isoFlag);
+        preGtTaus->push_back(theTau);
 
-	l1t::Tau theTau(*&tauLorentz, tauEt, region->hwEta(), region->hwPhi(), quality, isoFlag);
 
-	preGtTaus->push_back(theTau);
+      }
     }
   }
+  
   TauToGtScales(params_, preGtTaus, taus);
 
   delete subRegions;
@@ -184,9 +238,9 @@ string l1t::Stage1Layer2TauAlgorithmImpPP::findNESW(int ieta, int iphi, int neta
   int deltaPhi = iphi - nphi;
   if (std::abs(deltaPhi) == L1CaloRegionDetId::N_PHI-1)
     deltaPhi = -deltaPhi/std::abs(deltaPhi); //18 regions in phi
-
+//  std::cout << ieta << " " << neta << std::endl;
   int deltaEta = ieta - neta;
-
+//  std::cout << "deltaPhi, deltaEta " << deltaPhi << ", " << deltaEta << std::endl;
   if ((std::abs(deltaPhi) +  std::abs(deltaEta)) < 2) {
     if (deltaEta==-1) {
       return "isEast";
@@ -197,6 +251,9 @@ string l1t::Stage1Layer2TauAlgorithmImpPP::findNESW(int ieta, int iphi, int neta
       }
       if (deltaPhi==1) {
 	return "isSouth";
+      }
+      if (deltaPhi==0){
+        return "isOverlap";
       }
     }
     else {
