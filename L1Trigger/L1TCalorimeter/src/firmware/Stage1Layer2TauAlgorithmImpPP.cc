@@ -142,10 +142,10 @@ void l1t::Stage1Layer2TauAlgorithmImpPP::processEvent(const std::vector<l1t::Cal
           string NESWSubNeighbor = findNESW(regionEta, regionPhi, highestSubNeighborEta, highestSubNeighborPhi); //NESW between central and subneighbor (overlap check)
           string NESWCandidate = findNESW(regionEta, regionPhi, neighborEta, neighborPhi); //NESW between central and neighbor
           std::cout<<"tau et, subneighbor et, NESWNeighbor, NESWSubNeighbor, NESWCandidate" << tauEt << " , " << highestSubNeighborEt << " , " << NESWNeighbor << " , " << NESWSubNeighbor  << ", " << NESWCandidate << std::endl;
-          if(NESWNeighbor == "isNorth" || NESWNeighbor == "isSouth" || NESWNeighbor == "isEast" || NESWNeighbor == "isWest"){
+          /*if(NESWNeighbor == "isNorth" || NESWNeighbor == "isSouth" || NESWNeighbor == "isEast" || NESWNeighbor == "isWest"){
             std::cout<<"highest subneighbor is non diagonal to highest neighbor" << std::endl;
             if(NESWSubNeighbor == "isOverlap" || (tauEt > highestSubNeighborEt && (NESWCandidate=="isEast" || NESWCandidate=="isNorth"))
-              || (tauEt >= highestSubNeighborEt && (NESWCandidate=="isSouth" || NESWCandidate=="isWest"))){ //check if central is highest neighbor of neighbor before storing highest neighbor info
+              || (tauEt >= highestSubNeighborEt && (NESWCandidate=="isSouth" || NESWCandidate=="isWest"))){ //check if central is highest neighbor of neighbor before storing highest neighbor info */
               std::cout << "adding highest neighbor info" << std::endl; 
    
     	      highestNeighborEt = neighbor->hwPt();
@@ -153,11 +153,11 @@ void l1t::Stage1Layer2TauAlgorithmImpPP::processEvent(const std::vector<l1t::Cal
 	      highestNeighborPhi = neighbor->hwPhi();
 	      int neighborTauVeto = neighbor->hwQual() & 0x1; // tauVeto should be the first bit of quality integer
 	      highestNeighborTauVeto = neighborTauVeto;
-	    }
+/*	    }
             if (highestSubNeighborEt > tauEt){
               std::cout << "should skip recording neighbor as highest neighbor" << std::endl;  
 	    }
-          }
+          }*/
         }
       }
 
@@ -184,9 +184,11 @@ void l1t::Stage1Layer2TauAlgorithmImpPP::processEvent(const std::vector<l1t::Cal
         //std::cout << "tau et, neighbor et, subneighbor et " << tauEt << " " << highestNeighborEt << " " << highestSubNeighborEt<< std::endl;
             //}
         ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<double> > tauLorentz(0,0,0,0);
-
+          
         l1t::Tau theTau(*&tauLorentz, tauEt, region->hwEta(), region->hwPhi(), quality, isoFlag);
-        preGtTaus->push_back(theTau);
+        //if (isoFlag == 1){
+        	preGtTaus->push_back(theTau);
+	//}
 
 
       }
