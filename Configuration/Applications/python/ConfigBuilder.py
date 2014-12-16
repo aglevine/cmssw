@@ -933,6 +933,7 @@ class ConfigBuilder(object):
 		self.GENDefaultSeq='fixGenInfo'
 
         if self._options.scenario=='cosmics':
+	    self._options.pileup='Cosmics'	
             self.DIGIDefaultCFF="Configuration/StandardSequences/DigiCosmics_cff"
             self.RECODefaultCFF="Configuration/StandardSequences/ReconstructionCosmics_cff"
 	    self.SKIMDefaultCFF="Configuration/StandardSequences/SkimsCosmics_cff"
@@ -1436,6 +1437,7 @@ class ConfigBuilder(object):
 	    self.scheduleSequence(sequence.split('.')[-1],'digi2raw_step')
 	    if "DIGIPREMIX" in self.stepMap.keys():
 		    self.executeAndRemember("process.esDigiToRaw.Label = cms.string('mix')")  ##terrible hack - bypass zero suppression
+		    self.executeAndRemember("process.SiStripDigiToRaw.FedReadoutMode = cms.string('PREMIX_RAW')")  ##special readout mode for StripTracker
 
             return
 
